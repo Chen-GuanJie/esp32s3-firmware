@@ -91,7 +91,7 @@ bool usart::subscribe(on_usart_msg_cb callback, void *ctx)
     // 订阅串口信息
     auto it = std::find_if(_subscriptions.begin(), _subscriptions.end(),
                            [](subscription &sub)
-                           { return sub.un_used == true; });
+                           { return sub.un_used; });
     if (it == _subscriptions.end())
     {
         return false;

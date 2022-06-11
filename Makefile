@@ -3,6 +3,6 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := wifi_softAP
+PROJECT_NAME := esp32s3
 
 include $(IDF_PATH)/make/project.mk
