@@ -27,7 +27,7 @@
 // #define EXAMPLE_ESP_WIFI_CHANNEL 1
 // #define EXAMPLE_MAX_STA_CONN 1
 
- static const char *TAG = "wifi softAP";
+static const char *TAG = "wifi softAP";
 
 // static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 //                                int32_t event_id, void *event_data)
@@ -86,7 +86,86 @@
 // }
 
 #include "user/Server.h"
+#include "user/TcpClient.h"
 
+/*
+ * 任务：建立TCP连接并从TCP接收数据
+ * @param[in]   void  		       :无
+ * @retval      void                :无
+ */
+static void tcp_connect(void *pvParameters)
+{
+    while (1)
+    {
+        g_rxtx_need_restart = false;
+        //等待WIFI连接信号量(即等待ESP32作为STA连接到热点的信号)，死等
+        xEventGroupWaitBits(tcp_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
+        ESP_LOGI(TAG, "start tcp connected");
+        TaskHandle_t tx_rx_task = NULL; //任务句柄
+        //延时3S准备建立clien
+        vTaskDelay(3000 / portTICK_RATE_MS);
+        ESP_LOGI(TAG, "create tcp Client");
+        //建立client
+        int socket_ret = create_tcp_client();
+
+        if (socket_ret == ESP_FAIL)
+        {
+            //建立失败
+            ESP_LOGI(TAG, "create tcp socket error,stop...");
+            continue;
+        }
+        else
+        {
+            //建立成功
+            ESP_LOGI(TAG, "create tcp socket succeed...");
+            //建立tcp接收数据任务
+            if (pdPASS != xTaskCreate(&recv_data, "recv_data", 4096, NULL, 4, &tx_rx_task)) // tx_rx_task 任务句柄
+            {
+                //建立失败
+                ESP_LOGI(TAG, "Recv task create fail!");
+            }
+            else
+            {
+                //建立成功
+                ESP_LOGI(TAG, "Recv task create succeed!");
+            }
+        }
+        while (1)
+        { //每3秒钟检查一次是否需要重新连接
+            vTaskDelay(3000 / portTICK_RATE_MS);
+            if (g_rxtx_need_restart)
+            {
+                vTaskDelay(3000 / portTICK_RATE_MS);
+                ESP_LOGI(TAG, "reStart create tcp client...");
+                //建立client
+                int socket_ret = create_tcp_client();
+
+                if (socket_ret == ESP_FAIL)
+                {
+                    ESP_LOGE(TAG, "reStart create tcp socket error,stop...");
+                    continue;
+                }
+                else
+                {
+                    ESP_LOGI(TAG, "reStart create tcp socket succeed...");
+                    //重新建立完成，清除标记
+                    g_rxtx_need_restart = false;
+                    //建立tcp接收数据任务
+                    if (pdPASS != xTaskCreate(&recv_data, "recv_data", 4096, NULL, 4, &tx_rx_task))
+                    {
+                        ESP_LOGE(TAG, "reStart Recv task create fail!");
+                    }
+                    else
+                    {
+                        ESP_LOGI(TAG, "reStart Recv task create succeed!");
+                    }
+                }
+            }
+        }
+    }
+
+    vTaskDelete(NULL); //删除任务本身
+}
 
 extern "C" void app_main(void)
 {
@@ -98,13 +177,14 @@ extern "C" void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+    wifi_init_sta();
+    xTaskCreate(&tcp_connect, "tcp_connect", 4096, NULL, 5, NULL); //新建一个TCP连接任务
 
-    // ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
-    //wifi_init_softap();
-    Server* s= new Server();
+    Server *s = new Server();
     s->startTask();
 
-    while(1){
+    while (1)
+    {
         vTaskDelay(50);
     }
 }

@@ -33,6 +33,7 @@ private:
 public:
     moto(usart *uart, gpios *ctrl);
     moto(uint8_t uartnum, int baudrate);
+    void enablesend();
     void runTask();
     void sendQueue(queuedata* qd);
     void startTask(const char *const Name = "moto_task", const uint32_t usStackDepth = 2048, UBaseType_t uxPriority = 12);

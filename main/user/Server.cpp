@@ -5,6 +5,12 @@ Server::Server(/* args */)
 {
   uint8_t pins[6] = {2, 4, 18, 34, 21, 37};
   ctrl = new gpios(pins, 6);
+  ctrl->set(4, 1);
+  ctrl->set(2, 0);
+  ctrl->set(21, 1);
+  ctrl->set(37, 0);
+  ctrl->set(34, 1);
+  ctrl->set(18, 0);
   u1 = new usart(0, 115200);
   u2 = new usart(1, 115200);
   u3 = new usart(2, 115200);
@@ -15,7 +21,7 @@ Server::Server(/* args */)
   { ((Server *)ctx)->callback((uint8_t *)msg, len); };
   u1->subscribe(func, this);
   u2->subscribe(func, this);
-  u2->subscribe(func, this);
+  u3->subscribe(func, this);
   m1 = new moto(u1, ctrl);
   m2 = new moto(u2, ctrl);
   m3 = new moto(u3, ctrl);
@@ -29,32 +35,35 @@ void Server::startTask(const char *const pcName, const uint32_t usStackDepth, UB
     Server *Pointer = (Server *)pvParameters;
     Pointer->runTask();
   };
-  u1->start_server();
-  u2->start_server();
-  u3->start_server();
-  m1->startTask();
-  m2->startTask();
+  // u1->start_server();
+  // u2->start_server();
+  // u3->start_server();
+  // m1->startTask();
+  // m2->startTask();
   m3->startTask();
   xTaskCreate(runtask, pcName, usStackDepth, this, uxPriority, NULL);
 }
+extern QueueHandle_t tcpMsgQueue;
+
 void Server::runTask()
 {
   // 主任务
-  Queue = xQueueCreate(5, sizeof(uint8_t) * 10);
-  void *pv = (void *)malloc(sizeof(uint8_t) * 10);
+  tcpMsgQueue = xQueueCreate(5, sizeof(uint8_t) * 10);
+  uint8_t *pv = (uint8_t *)malloc(sizeof(uint8_t) * 10);
   queuedata *qd = (queuedata *)malloc(sizeof(queuedata));
-  qd->len = 3;
+  qd->len = 1;
   qd->md = (queuedata::motodata *)malloc(sizeof(queuedata::motodata) * 3);
-  // qd->md->id = 1;
-  // qd->md->angle = 789;
-  // qd->md->time = 987;
+  qd->md->id = 1;
+  qd->md->angle = 789;
+  qd->md->time = 455;
 
   for (;;)
   {
-    if (xQueueReceive(Queue, pv, (portTickType)portMAX_DELAY))
+    if (xQueueReceive(tcpMsgQueue, pv, (portTickType)portMAX_DELAY))
     {
-      m1->sendQueue(qd);
-      m2->sendQueue(qd);
+      qd->md->angle=(qd->md->angle+100)%900;
+      // m1->sendQueue(qd);
+      // m2->sendQueue(qd);
       m3->sendQueue(qd);
     }
     vTaskDelay(50);

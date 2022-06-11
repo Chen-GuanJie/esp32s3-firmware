@@ -3,7 +3,9 @@
 #include <bits/stdc++.h>
 static const char *TAsG = "uart_events";
 #define PATTERN_CHR_NUM (3) /*!< Set the number of consecutive and identical characters received by receiver which defines a UART pattern*/
-
+uint8_t usart::get_num(){
+    return this->UartNum;
+}
 usart::usart(int uartnum, int baudrate)
 {
     if ((uartnum < 3) && (uartnum >= 0))

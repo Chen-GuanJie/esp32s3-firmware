@@ -29,6 +29,7 @@ public:
     void start_server(const char *const pcName = "uart_task", const uint32_t usStackDepth = 2048, UBaseType_t uxPriority = 12);
     void send(const void *src, size_t size);
     bool subscribe(on_usart_msg_cb callback, void *ctx);
+    uint8_t get_num();
     usart(int uartnum, int baudrate);
     ~usart();
 };

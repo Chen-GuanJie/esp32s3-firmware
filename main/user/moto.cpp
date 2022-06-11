@@ -2,7 +2,7 @@
 #define GET_LOW_BYTE(A) ((uint8_t)(A))
 #define GET_HIGH_BYTE(A) ((uint8_t)((A) >> 8))
 #define BYTE_TO_HW(A, B) ((((uint16_t)(A)) << 8) | (uint8_t)(B))
-//#include "esp_log.h"
+#include "esp_log.h"
 
 moto::moto(usart *u, gpios *c) //(uint8_t uartnum, int baudrate) : usart(uartnum, baudrate)
 {
@@ -24,6 +24,29 @@ void moto::startTask(const char *const Name, const uint32_t usStackDepth, UBaseT
   };
   xTaskCreate(runtask, Name, usStackDepth, this, uxPriority, NULL);
 }
+void moto::enablesend()
+{
+  switch (uart->get_num())
+  {
+  case 0:
+    ESP_LOGI("moto", "000");
+    // ctrl->set(4, 0);
+    // ctrl->set(2, 1);
+    break;
+  case 1:
+    ESP_LOGI("moto", "111");
+    // ctrl->set(21, 0);
+    // ctrl->set(37, 1);
+    break;
+  case 2:
+    ESP_LOGI("moto", "222");
+    ctrl->set(34, 0);
+    ctrl->set(18, 1);
+    break;
+  default:
+    break;
+  }
+}
 void moto::runTask()
 {
   // 主任务
@@ -34,15 +57,19 @@ void moto::runTask()
   {
     if (xQueueReceive(queue, pv, (portTickType)portMAX_DELAY))
     {
-      for (i = 0; i < pv->len; i++)
-      {
-        LobotSerialServoMove(txbuffer, pv->md[i].id, pv->md[i].angle, pv->md[i].time);
-        //ESP_LOGI("moto", "%s", txbuffer);
-        uart->send(txbuffer, 10);
-      }
+      // if (uart->get_num() == 2)
+      // {
+        for (i = 0; i < pv->len; i++)
+        {
+          LobotSerialServoMove(txbuffer, pv->md[i].id, pv->md[i].angle, pv->md[i].time);
+          // ESP_LOGI("moto", "%s", txbuffer);
+          enablesend();
+          uart->send(txbuffer, 10);
+        }
+      // }
     }
     // ESP_LOGI("moto", "line:%d,Task = %d", __LINE__,uxTaskGetStackHighWaterMark(NULL));
-    vTaskDelay(500);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
   free(pv);
 }
@@ -59,9 +86,10 @@ uint8_t moto::LobotCheckSum(uint8_t buf[])
   i = (uint8_t)temp;
   return i;
 }
-void moto::sendQueue(queuedata* qd)
+void moto::sendQueue(queuedata *qd)
 {
-  if(qd==nullptr){
+  if (qd == nullptr)
+  {
     return;
   }
   xQueueSend(queue, qd, 20 / portTICK_RATE_MS);

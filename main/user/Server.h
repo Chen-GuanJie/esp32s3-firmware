@@ -1,8 +1,7 @@
 #ifndef __SERVER_H
 #define __SERVER_H
 #include "moto.h"
-
-class Server
+class Server 
 {
 private:
     QueueHandle_t Queue;

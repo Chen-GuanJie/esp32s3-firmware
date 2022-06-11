@@ -1,5 +1,8 @@
 #include "gpios.h"
 #include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 gpios::gpios(uint8_t *pins, uint8_t num)
 {
     gpio_config_t io_conf = {};
@@ -16,7 +19,7 @@ gpios::gpios(uint8_t *pins, uint8_t num)
     // disable pull-down mode
     io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
     // disable pull-up mode
-    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
     // configure GPIO with the given settings
     gpio_config(&io_conf);
 }
@@ -26,5 +29,6 @@ gpios::~gpios()
 }
 void gpios::set(uint8_t gpio_num, uint32_t level)
 {
-    gpio_set_level((gpio_num_t)port_list[gpio_num], level);
+    gpio_set_level((gpio_num_t)gpio_num, level);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
 }
